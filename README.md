@@ -1,2 +1,2 @@
 # pancakeswap
-Projects for bot working on Pancakeswap DEX
+Projects for bots working on Pancakeswap DEX
