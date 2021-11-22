@@ -17,6 +17,33 @@ PRIVATE_KEY = str(PRIVATE_KEY_STR).lower()
 
 predictionContract = w3.eth.contract(address=PREDICTION_CONTRACT, abi=PREDICTION_ABI)
 
+def result(round):
+    
+    global w3
+    global predictionContract
+    global ADDRESS
+    global GAS
+    global GAS_PRICE
+    global SELL_AFTER_WIN
+    
+    win = predictionContract.functions.claimable(round,ADDRESS_STR).call()
+    print(win)
+    if (win and SELL_AFTER_WIN):
+        print("going to collect")
+        r = [round]
+        claim = predictionContract.functions.claim(r).buildTransaction({
+            'from': ADDRESS,
+            'nonce': w3.eth.getTransactionCount(ADDRESS),
+            'value':0,
+            'gas': GAS,
+            'gasPrice': GAS_PRICE,
+        })
+        signed_tx = w3.eth.account.signTransaction(claim, private_key=PRIVATE_KEY)
+        w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        print(f'{w3.eth.waitForTransactionReceipt(signed_tx.hash)}')
+        #0xe9e7cea3dedca5984780bafc599bd69add087d56
+        #chaging for dollar
+
 
 def betBull(value, round):
     
@@ -36,6 +63,9 @@ def betBull(value, round):
     signed_tx = w3.eth.account.signTransaction(bull_bet, private_key=PRIVATE_KEY)
     w3.eth.sendRawTransaction(signed_tx.rawTransaction)     
     print(f'{w3.eth.waitForTransactionReceipt(signed_tx.hash)}')
+    time.sleep(360)
+    result(round)
+
 
 
 def betBear(value, round):
@@ -56,18 +86,19 @@ def betBear(value, round):
     signed_tx = w3.eth.account.signTransaction(bear_bet, private_key=PRIVATE_KEY)
     w3.eth.sendRawTransaction(signed_tx.rawTransaction)
     print(f'{w3.eth.waitForTransactionReceipt(signed_tx.hash)}')
+    time.sleep(360)
+    result(round)
 
-
-def makeBet(epoch):
+def makeBet(epoch,up):
     """
     Add your bet logic here
 
     This example bet random either up or down:
     """
     global w3
-    value = w3.toWei(0.005, 'ether')
-    rand = random.getrandbits(1)
-    if rand:
+    value = w3.toWei(0.001, 'ether')
+    
+    if up:
         print(f'Going Bull #{epoch} | {value} BNB  ')
         betBull(value, epoch)        
     else:
@@ -99,9 +130,16 @@ def run():
         try:
             now = dt.datetime.now()
             if now >= round[0]:
-                threading.Thread(target=makeBet, args=(round[1],)).start()
+                up = True
+                if (round[2] < round[3]):
+                    up = False
+                
+                threading.Thread(target=makeBet, args=(round[1],up,)).start()
                 time.sleep(180)
                 round = newRound()
+            else:
+                round = newRound()
+                time.sleep(2)    
         except Exception as e:
             print(f'(error) Restarting...% {e}')
             round = newRound()
